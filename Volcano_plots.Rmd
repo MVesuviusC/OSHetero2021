@@ -107,7 +107,7 @@ Then, graph each of those DEG datasets using a volcano plot.
 ```{r load, cache=TRUE}
 #From Fig1
 load("Data/os17_cx_CCR.RData") #os17_cx
-load(file ="Data/os7_cx_CCR.RData") #os7_cx
+load("Data/os7_cx_CCR.RData") #os7_cx
 
 # From Fig3
 load("Data/OS_list_CCR.RData")
@@ -311,6 +311,7 @@ for (tumor_name in names_list) {
   )
   hallmark <- tibble()
   message("Adding Hallmark and Creating Dot Plots...")
+  trouble_shoot <- list()
   for(m in de_methods) {
     for(c in names(clusters)) {
       for(o in ont2$code) {
@@ -322,66 +323,71 @@ for (tumor_name in names_list) {
           dplyr::select(gs_id, gs_name)
         degs_df <- degs[[m]][[c]] %>%
           as.matrix
-        temp <-
-          enricher(rownames(degs_df),
-                   TERM2GENE = msig.gene.set,
-                   TERM2NAME = msig.name)@result %>%
-          as_tibble() %>%
-          select(ID, p.adjust) %>%
-          dplyr::rename(pathway = ID) %>%
-          arrange(p.adjust) %>%
-          slice_head(n = 5) %>%
-          mutate(p.adjust = -log10(p.adjust),
-                 pathway = str_remove(pathway, "HALLMARK_") %>%
-                   str_replace_all("_", " "),
-                 order = seq_len(n()))
+        trouble_shoot[[c]] <-
+            enricher(rownames(degs_df),
+                     TERM2GENE = msig.gene.set,
+                     TERM2NAME = msig.name)@result %>%
+          as_tibble()
+        # temp <-
+        #   enricher(rownames(degs_df),
+        #            TERM2GENE = msig.gene.set,
+        #            TERM2NAME = msig.name)@result %>%
+        #   as_tibble() %>%
+        #   select(ID, p.adjust) %>%
+        #   dplyr::rename(pathway = ID) %>%
+        #   arrange(p.adjust) %>%
+        #   slice_head(n = 5) %>%
+        #   mutate(p.adjust = -log10(p.adjust),
+        #          pathway = str_remove(pathway, "HALLMARK_") %>%
+        #            str_replace_all("_", " "),
+        #          order = seq_len(n()))
         
-        if (nrow(temp) > 0) {
-          plots[[c]][[m]][[o]] <- ggplot() +
-            geom_bar(data = temp,
-                     aes(x = -1 * order,
-                         y = p.adjust,
-                         fill = p.adjust > 0),
-                     stat = "identity",
-                     alpha = 0.8) +
-            coord_flip() +
-            geom_hline(yintercept = c(-1.5, 1.5),
-                       color = "gray",
-                       linetype = 2,
-                       size = 1) +
-            geom_hline(yintercept = 0,
-                       color = "black",
-                       size = 1) +
-            geom_text(data = temp,
-                      aes(x = -1 * order,
-                          y = 1 * 12,
-                          label = pathway)) +
-            scale_fill_manual(values = c("#e41a1c")) + #"#377eb8",
-            theme_bw() +
-            theme(strip.background = element_rect(color = "white",
-                                                  fill = "white"),
-                  strip.text.x = element_text(size = 10, face = "bold"),
-                  legend.position = "none",
-                  panel.grid.major = element_blank(),
-                  panel.grid.minor = element_blank(),
-                  panel.border = element_blank(),
-                  axis.line.x = element_line(color = "black"),
-                  axis.title.y = element_blank(),
-                  axis.text.y = element_blank(),
-                  axis.ticks.y = element_blank()) +
-            labs(title = paste(c, "-", ont2[ont2$code == o, "name"]),
-                 subtitle = paste(m, "method")) 
+        # if (nrow(temp) > 0) {
+        #   plots[[c]][[m]][[o]] <- ggplot() +
+        #     geom_bar(data = temp,
+        #              aes(x = -1 * order,
+        #                  y = p.adjust,
+        #                  fill = p.adjust > 0),
+        #              stat = "identity",
+        #              alpha = 0.8) +
+        #     coord_flip() +
+        #     geom_hline(yintercept = c(-1.5, 1.5),
+        #                color = "gray",
+        #                linetype = 2,
+        #                size = 1) +
+        #     geom_hline(yintercept = 0,
+        #                color = "black",
+        #                size = 1) +
+        #     geom_text(data = temp,
+        #               aes(x = -1 * order,
+        #                   y = 1 * 12,
+        #                   label = pathway)) +
+        #     scale_fill_manual(values = c("#e41a1c")) + #"#377eb8",
+        #     theme_bw() +
+        #     theme(strip.background = element_rect(color = "white",
+        #                                           fill = "white"),
+        #           strip.text.x = element_text(size = 10, face = "bold"),
+        #           legend.position = "none",
+        #           panel.grid.major = element_blank(),
+        #           panel.grid.minor = element_blank(),
+        #           panel.border = element_blank(),
+        #           axis.line.x = element_line(color = "black"),
+        #           axis.title.y = element_blank(),
+        #           axis.text.y = element_blank(),
+        #           axis.ticks.y = element_blank()) +
+        #     labs(title = paste(c, "-", ont2[ont2$code == o, "name"]),
+        #          subtitle = paste(m, "method")) 
 
-        } else { 
-          plots[[c]][[m]][[o]] <-
-            ggplot(tibble(x = "A", y = "A",
-                          text = "No significant hits"),
-                   aes(x = x, y = y, label = text)) +
-            geom_text() +
-            theme(axis.text = element_text(size = 5)) +
-            labs(title = paste(c, "-", ont2[ont2$code == o, "name"]),
-                 subtitle = paste(m, "method"), y = "")
-        }
+        # } else { 
+        #   plots[[c]][[m]][[o]] <-
+        #     ggplot(tibble(x = "A", y = "A",
+        #                   text = "No significant hits"),
+        #            aes(x = x, y = y, label = text)) +
+        #     geom_text() +
+        #     theme(axis.text = element_text(size = 5)) +
+        #     labs(title = paste(c, "-", ont2[ont2$code == o, "name"]),
+        #          subtitle = paste(m, "method"), y = "")
+        # }
       }
     }
   }
@@ -414,4 +420,26 @@ for (tumor_name in names_list) {
   message("Done.")
   message(paste0("**", tumor_name, " Analyses Completed**"))
 }
+
+test <- sapply(trouble_shoot, function(x) {
+    x$geneID[1] %>%
+        str_split(pattern = "/") %>% as.vector()
+    })
+ggvenn::ggvenn(test)
+
+met_genes <- unlist(test) %>% unique()
+
+os17_cx_test <- AddModuleScore(os17_cx,
+                               features = list(met_genes = met_genes),
+                               name = "met_genes")
+FeaturePlot(os17_cx_test, features = "met_genes1", pt.size = 0.1)
+
+os17_cx_test@meta.data %>%
+    as_tibble() %>%
+    ggplot(aes(x = as.factor(seurat_clusters),
+               y = met_genes1,
+               color = as.factor(seurat_clusters))) +
+    geom_boxplot(outlier.alpha = 0) +
+    ggbeeswarm::geom_beeswarm(size = 0.2, cex = 0.5)
+
 ```
